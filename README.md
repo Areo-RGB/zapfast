@@ -1,34 +1,46 @@
-# ZapFast UI — reusable egui components
+# ZapFast UI — reusable egui shell and widgets
 
-A minimal **UI-only Rust crate** derived/adapted from the visual language and reusable widget patterns in [ZapFast](https://github.com/crmne/zapfast). This branch intentionally contains **no WhatsApp implementation**, login, backend runtime, networking, database, or media stack.
+A backend-free Rust UI crate adapted from [ZapFast](https://github.com/crmne/zapfast), primarily the upstream `src/ui/mod.rs`, `src/ui/rail.rs` and `src/ui/pane.rs` composition patterns. The original `main` branch contains the complete application.
 
-## Reuse
+## Run the app-shell gallery
 
-Add as a Git dependency in another Rust/egui app:
+```bash
+cargo run --example gallery
+cargo check --all-targets
+```
+
+## Consume from another project
 
 ```toml
 zapfast-ui = { git = "https://github.com/Areo-RGB/zapfast", branch = "ui-only" }
 ```
 
 ```rust
-use zapfast_ui::{Palette, widgets};
-let palette = Palette::dark();
-palette.install(ui.ctx());
-widgets::menu_item(ui, &palette, "Settings", false);
+use zapfast_ui::{Palette, shell::{self, Destination, ShellConfig, ShellState}};
+let mut state = ShellState::default();
+let tabs = [Destination::new("home", "Home", "⌂")];
+// Within an egui/eframe update callback:
+shell::show(ctx, &Palette::dark(), &mut state, &tabs,
+    ShellConfig::default(),
+    |ui| shell::header_title(ui, "My app", None),
+    |ui, state| { if ui.button("Open item").clicked() { state.open_detail(); } },
+    |ui, _| { ui.label("Your content"); },
+    |ui| { ui.label("Your inspector"); });
 ```
 
-## Gallery
+## Extracted pieces
 
-```bash
-cargo run --example gallery
-```
+- `src/shell.rs` — app shell, fixed-width navigation rail, resizable sidebar, top header, central detail and optional inspector, narrow viewport behavior. All rendering delegated to closures.
+- `src/widgets.rs` — avatar, badge, menu item, menu frame, search field, empty state and message bubble.
+- `src/theme.rs` — color palettes and style tokens.
+- `examples/gallery.rs` — interactive shell demo showing all basic widgets.
 
-## Modules
+### Design boundaries
 
-- `src/theme.rs`: light/dark colors, spacing, egui style installer.
-- `src/widgets.rs`: avatar, badge, menu item, menu frame, search field, empty state, message bubble.
-- `examples/gallery.rs`: self-contained interactive component showcase.
+- No network, database, WhatsApp protocol, auth, media/audio, account state or app-specific `Action` enums.
+- The shell is a **portable adaptation** of the original layout, not a verbatim copy of its App-dependent implementation.
+- App data and callbacks remain the host's responsibility.
+- Narrow screens switch between sidebar and detail using `ShellState::open_detail` and `close_detail`.
+- License and original author credit are preserved.
 
-These are **portable adaptations**, not wholesale copies of the full ZapFast UI: original full-screen panels reference app-specific data and need further extraction if desired. See the original `main` branch for the full app. The source project's license and attribution are preserved.
-
-**Validation status:** The project structure and public API were prepared but have not been cargo-compiled in this environment. Run `cargo check --all-targets` locally to verify your toolchain and dependency compatibility.
+**Build note:** Compilation has not been executed in this environment. Run `cargo check --all-targets` with a recent Rust toolchain to validate.
