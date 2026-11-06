@@ -102,8 +102,8 @@ pub fn show(
     // Unlike the original App-dependent list pane, this surface accepts any egui content.
     if show_list {
         Panel::left("zapfast-ui-shell-sidebar")
-            .default_width(state.sidebar_width.max(config.min_sidebar_width))
-            .min_width(config.min_sidebar_width)
+            .default_size(state.sidebar_width.max(config.min_sidebar_width))
+            .size_range(config.min_sidebar_width..=f32::INFINITY)
             .resizable(!narrow)
             .frame(Frame::new().fill(palette.panel).inner_margin(egui::Margin::same(10)))
             .show(&mut root, |ui| {
@@ -113,7 +113,7 @@ pub fn show(
     }
     if show_inspector {
         Panel::right("zapfast-ui-shell-inspector")
-            .default_width(config.inspector_width)
+            .default_size(config.inspector_width)
             .resizable(true)
             .frame(Frame::new().fill(palette.panel).inner_margin(egui::Margin::same(12)))
             .show(&mut root, inspector);
