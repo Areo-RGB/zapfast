@@ -44,3 +44,14 @@ shell::show(ctx, &Palette::dark(), &mut state, &tabs,
 - License and original author credit are preserved.
 
 **Build note:** Compilation has not been executed in this environment. Run `cargo check --all-targets` with a recent Rust toolchain to validate.
+
+## Linux AppImage (CI)
+
+The `Build UI Gallery AppImage` workflow builds a **Linux x86_64** AppImage of `examples/gallery.rs` on pushes to `ui-only` or by manual dispatch.
+
+1. Open [Actions → Build UI Gallery AppImage](https://github.com/Areo-RGB/zapfast/actions/workflows/appimage.yml).
+2. Choose **Run workflow** on the `ui-only` branch, or use the run triggered by your latest push.
+3. Under the completed run's **Artifacts**, download `zapfast-ui-gallery-appimage-x86_64`.
+4. Extract the artifact ZIP, then run `chmod +x ZapFast-UI-Gallery-*.AppImage && ./ZapFast-UI-Gallery-*.AppImage`.
+
+This packages the **UI gallery**, not the original WhatsApp client. It builds on Ubuntu 22.04 and expects ordinary desktop graphics and windowing system libraries on the host; it is not a fully statically linked application.

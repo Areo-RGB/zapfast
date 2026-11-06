@@ -1,0 +1,106 @@
+name: Build UI Gallery AppImage
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ui-only]
+    paths:
+      - '.github/workflows/appimage.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'src/**'
+      - 'examples/**'
+      - 'assets/zapfast-ui.svg'
+
+permissions:
+  contents: read
+
+jobs:
+  appimage:
+    name: Linux x86_64 AppImage
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      ARCH: x86_64
+      APPIMAGE_EXTRACT_AND_RUN: '1'
+    steps:
+      - name: Check out UI-only branch
+        uses: actions/checkout@v4
+
+      - name: Install Linux build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config libssl-dev libx11-dev libxkbcommon-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev \
+            libwayland-dev libegl1-mesa-dev libgl1-mesa-dev \
+            ca-certificates curl file
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust builds
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check shell library and gallery
+        run: cargo check --all-targets
+
+      - name: Build gallery in release mode
+        run: cargo build --release --example gallery
+
+      - name: Create AppDir
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -Dm755 target/release/examples/gallery AppDir/usr/bin/zapfast-ui-gallery
+          install -Dm644 assets/zapfast-ui.svg AppDir/zapfast-ui.svg
+          ln -s zapfast-ui.svg AppDir/.DirIcon
+          cat > AppDir/zapfast-ui-gallery.desktop <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=ZapFast UI Gallery
+          Comment=Reusable Rust egui app shell and widget showcase
+          Exec=zapfast-ui-gallery
+          Icon=zapfast-ui
+          Categories=Development;Utility;
+          Terminal=false
+          EOF
+          cat > AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+          exec "$HERE/usr/bin/zapfast-ui-gallery" "$@"
+          EOF
+          chmod +x AppDir/AppRun
+          file AppDir/usr/bin/zapfast-ui-gallery
+          ldd AppDir/usr/bin/zapfast-ui-gallery
+
+      - name: Get appimagetool
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage \
+            -o appimagetool.AppImage
+          chmod +x appimagetool.AppImage
+
+      - name: Build and inspect AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="0.1.0"
+          export VERSION ARCH
+          ./appimagetool.AppImage --appimage-extract-and-run \
+            AppDir "ZapFast-UI-Gallery-${VERSION}-x86_64.AppImage"
+          chmod +x ZapFast-UI-Gallery-*.AppImage
+          file ZapFast-UI-Gallery-*.AppImage
+          ./ZapFast-UI-Gallery-*.AppImage --appimage-extract >/dev/null
+          test -x squashfs-root/AppRun
+          test -x squashfs-root/usr/bin/zapfast-ui-gallery
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: zapfast-ui-gallery-appimage-x86_64
+          path: ZapFast-UI-Gallery-*.AppImage
+          if-no-files-found: error
+          retention-days: 30
