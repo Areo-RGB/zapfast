@@ -1,6 +1,6 @@
 //! Backend-free adaptation of ZapFast's rail + list + detail window composition.
 //! Inspired by src/ui/{mod,rail,chats,pane}.rs on the original main branch.
-use egui::{Align, Align2, CentralPanel, Color32, Context, Frame, Id, Layout, RichText, Sense, SidePanel, Stroke, TopBottomPanel, Ui, vec2};
+use egui::{Align, Align2, CentralPanel, Context, Frame, Id, Layout, Panel, RichText, Sense, Ui, UiBuilder, vec2};
 use crate::theme::{Palette, TOP_BAR_HEIGHT};
 
 pub const RAIL_WIDTH: f32 = 52.0;
@@ -75,14 +75,16 @@ pub fn show(
     content: impl FnOnce(&mut Ui, &mut ShellState),
     inspector: impl FnOnce(&mut Ui),
 ) -> ShellLayout {
-    let narrow = ctx.screen_rect().width() < config.narrow_breakpoint;
+    let narrow = ctx.content_rect().width() < config.narrow_breakpoint;
     let show_list = state.sidebar_visible && (!narrow || !state.detail_open);
     let show_inspector = state.inspector_open && !narrow
-        && ctx.screen_rect().width() >= config.narrow_breakpoint + config.inspector_width;
-    TopBottomPanel::top("zapfast-ui-shell-header")
-        .exact_height(TOP_BAR_HEIGHT)
+        && ctx.content_rect().width() >= config.narrow_breakpoint + config.inspector_width;
+    // egui 0.36 panels draw into a root Ui rather than directly into Context.
+    let mut root = Ui::new(ctx.clone(), Id::new("zapfast-ui-root"), UiBuilder::new().max_rect(ctx.content_rect()));
+    Panel::top("zapfast-ui-shell-header")
+        .exact_size(TOP_BAR_HEIGHT)
         .frame(Frame::new().fill(palette.panel).inner_margin(egui::Margin::symmetric(12, 7)))
-        .show(ctx, |ui| {
+        .show(&mut root, |ui| {
             ui.horizontal_centered(|ui| {
                 if narrow && state.detail_open && ui.button("‹ Back").clicked() {
                     state.detail_open = false;
@@ -90,35 +92,35 @@ pub fn show(
                 header(ui);
             });
         });
-    SidePanel::left("zapfast-ui-shell-rail")
-        .exact_width(config.rail_width)
+    Panel::left("zapfast-ui-shell-rail")
+        .exact_size(config.rail_width)
         .resizable(false)
         .frame(Frame::new().fill(palette.panel))
-        .show(ctx, |ui| {
+        .show(&mut root, |ui| {
             rail(ui, palette, state, destinations);
         });
     // Unlike the original App-dependent list pane, this surface accepts any egui content.
     if show_list {
-        SidePanel::left("zapfast-ui-shell-sidebar")
+        Panel::left("zapfast-ui-shell-sidebar")
             .default_width(state.sidebar_width.max(config.min_sidebar_width))
             .min_width(config.min_sidebar_width)
             .resizable(!narrow)
             .frame(Frame::new().fill(palette.panel).inner_margin(egui::Margin::same(10)))
-            .show(ctx, |ui| {
+            .show(&mut root, |ui| {
                 state.sidebar_width = ui.max_rect().width();
                 sidebar(ui, state);
             });
     }
     if show_inspector {
-        SidePanel::right("zapfast-ui-shell-inspector")
+        Panel::right("zapfast-ui-shell-inspector")
             .default_width(config.inspector_width)
             .resizable(true)
             .frame(Frame::new().fill(palette.panel).inner_margin(egui::Margin::same(12)))
-            .show(ctx, inspector);
+            .show(&mut root, inspector);
     }
     CentralPanel::default()
         .frame(Frame::new().fill(palette.window).inner_margin(egui::Margin::same(14)))
-        .show(ctx, |ui| {
+        .show(&mut root, |ui| {
             if narrow && !state.detail_open && show_list {
                 ui.vertical_centered(|ui| {
                     ui.add_space(35.0);

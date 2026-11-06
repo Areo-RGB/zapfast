@@ -59,7 +59,7 @@ impl Palette {
         }
     }
     pub fn install(self, ctx: &Context) {
-        let mut style: Style = (*ctx.style()).clone();
+        let mut style: Style = (*ctx.global_style()).clone();
         let mut visuals = if self.dark { Visuals::dark() } else { Visuals::light() };
         visuals.panel_fill = self.panel;
         visuals.window_fill = self.window;
@@ -75,6 +75,7 @@ impl Palette {
         visuals.widgets.active.corner_radius = CornerRadius::same(RADIUS);
         style.visuals = visuals;
         style.spacing.item_spacing = egui::vec2(SPACING, SPACING);
-        ctx.set_style(style);
+        ctx.set_theme(if self.dark { egui::Theme::Dark } else { egui::Theme::Light });
+        ctx.set_global_style(style);
     }
 }
