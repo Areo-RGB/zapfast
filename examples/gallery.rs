@@ -13,7 +13,8 @@ impl Default for Gallery {
     }
 }
 impl eframe::App for Gallery {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = ui.ctx();
         let palette = if self.dark { Palette::dark() } else { Palette::light() };
         palette.install(ctx);
         let destinations = [
